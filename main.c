@@ -13,6 +13,11 @@ int main() {
     insert(&tree, 14);
     insert(&tree, 7);
     insert(&tree, 15);
+    printf("%d\n", pop_min(&tree)->value);
+    printf("%d\n", pop_min(&tree)->value);
+    printf("%d\n", pop_min(&tree)->value);
+    printf("%d\n", pop_min(&tree)->value);
+//    printf("%d\n", pop_min(&tree)->value);
     print(&tree);
 
     return 0;

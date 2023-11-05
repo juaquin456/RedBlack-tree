@@ -179,23 +179,32 @@ void insert(struct RB_tree* tree, int value) {
     }
 }
 
+void delete_fix(struct RB_tree *pTree, struct RB_node *pNode);
+
 struct RB_node* pop_min(struct RB_tree* tree) {
-    struct RB_node* tmp = tree->root;
-    while (tmp->left) {
-        tmp = tmp->left;
+    struct RB_node* min = tree->root;
+    while (min->left) {
+        min = min->left;
     }
-    if (tmp->parent->left == tmp) {
-        tmp->parent->left = tmp->right;
+    if (min->parent) {
+        min->parent->left = min->right;
     }
     else {
-        tmp->parent->right = tmp->right;
+        tree->root = min->right;
     }
-    if (tmp->right) {
-        tmp->right->parent = tmp->parent;
+    if (min->right) {
+        min->right->parent = min->parent;
     }
-    return tmp;
+    if (is_black(min))
+        delete_fix(tree, min);
+
+    return min;
 }
 
+/*Delete fix function only for the case for popping minimum*/
+void delete_fix(struct RB_tree *pTree, struct RB_node *pNode) {
+    // TODO
+}
 
 
 #endif //RB_TREE_RB_H
