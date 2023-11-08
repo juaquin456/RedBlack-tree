@@ -179,32 +179,117 @@ void insert(struct RB_tree* tree, int value) {
     }
 }
 
-void delete_fix(struct RB_tree *pTree, struct RB_node *pNode);
-
-struct RB_node* pop_min(struct RB_tree* tree) {
-    struct RB_node* min = tree->root;
-    while (min->left) {
-        min = min->left;
-    }
-    if (min->parent) {
-        min->parent->left = min->right;
-    }
-    else {
-        tree->root = min->right;
-    }
-    if (min->right) {
-        min->right->parent = min->parent;
-    }
-    if (is_black(min))
-        delete_fix(tree, min);
-
-    return min;
-}
-
 /*Delete fix function only for the case for popping minimum*/
 void delete_fix(struct RB_tree *pTree, struct RB_node *pNode) {
-    // TODO
+    while ((pNode != pTree->root) & is_black(pNode)) {
+        if (pNode == pNode->parent->left) {
+            struct RB_node *w = pNode->parent->right;
+            if (!is_black(w)) {
+                w->color = 0;
+                pNode->parent->color = 1;
+                left_rotate(pTree, pNode->parent);
+                w = pNode->parent->right;
+            }
+            if (is_black(w->left) & is_black(w->right)) {
+                w->color = 1;
+                pNode = pNode->parent;
+            } else {
+                if (is_black(w->right)) {
+                    w->left->color = 0;
+                    w->color = 1;
+                    right_rotate(pTree, w);
+                    w = pNode->parent->right;
+                }
+                w->color = pNode->parent->color;
+                pNode->parent->color = 0;
+                w->right->color = 0;
+                left_rotate(pTree, pNode->parent);
+                pNode = pTree->root;
+            }
+        } else {
+            struct RB_node *w = pNode->parent->left;
+            if (!is_black(w)) {
+                w->color = 0;
+                pNode->parent->color = 1;
+                right_rotate(pTree, pNode->parent);
+                w = pNode->parent->left;
+            }
+            if (is_black(w->left) & is_black(w->right)) {
+                w->color = 1;
+                pNode = pNode->parent;
+            } else {
+                if (is_black(w->left)) {
+                    w->right->color = 0;
+                    w->color = 1;
+                    left_rotate(pTree, w);
+                    w = pNode->parent->left;
+                }
+                w->color = pNode->parent->color;
+                pNode->parent->color = 0;
+                w->left->color = 0;
+                right_rotate(pTree, pNode->parent);
+                pNode = pTree->root;
+            }
+        }
+    }
+    pNode->color = 0;
 }
 
+void transplant(struct RB_tree* tree, struct RB_node* u, struct RB_node* v) {
+    if (!u->parent)
+        tree->root = v;
+    else if (u == u->parent->left) {
+        u->parent->left = v;
+    }
+    else {
+        u->parent->right = v;
+    }
+    if (v)
+        v->parent = u->parent;
+}
+
+void delete(struct RB_tree* tree, struct RB_node* node) {
+    struct RB_node* y = node;
+    struct RB_node* x;
+    bool y_original_color = y->color;
+    if (!node->left) {
+        x = node->right;
+        transplant(tree, node, node->right);
+    }
+    else if (!node->right) {
+        x = node->left;
+        transplant(tree, node, node->left);
+    }
+    else {
+        y_original_color = y->color;
+        x = y->right;
+        if (y != node->right) {
+            transplant(tree, y, y->right);
+            y->right = node->right;
+            y->right->parent = y;
+        }
+        else
+            x->parent = y;
+
+        transplant(tree, node, y);
+        y->left = node->left;
+        y->left->parent = y;
+        y->color = node->color;
+    }
+    if (y_original_color && x) {
+        delete_fix(tree, x);
+    }
+}
+
+int pop_min(struct RB_tree* tree) {
+    struct RB_node* node = tree->root;
+    while (node->left) {
+        node = node->left;
+    }
+    int value = node->value;
+    delete(tree, node);
+    free(node);
+    return value;
+}
 
 #endif //RB_TREE_RB_H
