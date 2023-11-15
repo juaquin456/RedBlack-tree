@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "RB.h"
 int main() {
     struct RB_tree tree;
@@ -33,8 +32,6 @@ int main() {
     insert(&tree, &t5);
     insert(&tree, &t6);
     insert(&tree, &t7);
-    //    printf("pop %d\n", pop_min(&tree)->priority);
-//    insert(&tree, &t3);
     print(&tree);
     return 0;
 }
