@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 struct RB_node {
     struct RB_node* left;
@@ -31,6 +32,10 @@ struct thread {
     struct RB_node elem_node;
 };
 
+bool tree_empty(struct RB_tree* tree) {
+    return tree->root == &tree->NILL;
+}
+
 void init_node(struct RB_tree* tree,struct RB_node* node, struct thread* t) {
     node->left = &tree->NILL;
     node->right = &tree->NILL;
@@ -53,7 +58,7 @@ void _print(struct RB_tree* tree, struct RB_node* node, int level) {
     for (int i = 0; i < level; i++) {
         printf("    ");
     }
-    printf("%d\n", node->t->priority);
+    printf("%d | %d \n", node->t->recent_cpu, node->color);
     if (node->left != &tree->NILL) {
         _print(tree, node->left, level + 1);
     }
@@ -81,15 +86,19 @@ bool is_black(struct RB_tree* tree, struct RB_node* node) {
 void left_rotate(struct RB_tree* tree, struct RB_node* node) {
     struct RB_node* right = node->right;
     node->right = right->left;
-    if (right->left != &tree->NILL)
+    if (right->left != &tree->NILL){
         right->left->parent = node;
-    if (node->parent == &tree->NILL)
-        tree->root = right;
-    else if (node->parent->left == node)
-        node->parent->left = right;
-    else
-        node->parent->right = right;
+    }
     right->parent = node->parent;
+    if (node->parent == &tree->NILL){
+        tree->root = right;
+    }
+    else if (node->parent->left == node) {
+        node->parent->left = right;
+    }
+    else{
+        node->parent->right = right;
+    }
     right->left = node;
     node->parent = right;
 }
@@ -99,13 +108,13 @@ void right_rotate(struct RB_tree* tree, struct RB_node* node) {
     node->left = left->right;
     if (left->right != &tree->NILL)
         left->right->parent = node;
+    left->parent = node->parent;
     if (node->parent == &tree->NILL)
         tree->root = left;
     else if (node->parent->left == node)
         node->parent->left = left;
     else
         node->parent->right = left;
-    left->parent = node->parent;
     left->right = node;
     node->parent = left;
 }
@@ -158,7 +167,7 @@ struct RB_node* find_parent(struct RB_tree* tree, struct RB_node* initial, struc
     struct RB_node* parent = &tree->NILL;
     while (initial != &tree->NILL) {
         parent = initial;
-        if (finding->t->priority > initial->t->priority) {
+        if (finding->t->recent_cpu < initial->t->recent_cpu) {
             initial = initial->left;
         }
         else {
@@ -179,70 +188,70 @@ void insert(struct RB_tree* tree, struct thread* t) {
         struct RB_node* parent = find_parent(tree, tree->root, &t->elem_node);
 
         (&t->elem_node)->parent = parent;
-        if ((&t->elem_node)->t->priority > parent->t->priority)
+        if ((&t->elem_node)->t->recent_cpu < parent->t->recent_cpu)
             parent->left = (&t->elem_node);
         else
             parent->right = (&t->elem_node);
-
-        // printf("%d\n", parent == &tree->NILL);
         if ((&t->elem_node)->parent->parent)
             insert_fix(tree, (&t->elem_node));
     }
+    assert(!tree->root->color);
+    assert(!tree_empty(tree));
 }
 
-void delete_fix(struct RB_tree *pTree, struct RB_node *pNode) {
-    while ((pNode != pTree->root) & is_black(pTree, pNode)) {
-        if (pNode == pNode->parent->left) {
-            struct RB_node *w = pNode->parent->right;
+void delete_fix(struct RB_tree *pTree, struct RB_node *x) {
+    while ((x != pTree->root) & is_black(pTree, x)) {
+        if (x == x->parent->left) {
+            struct RB_node *w = x->parent->right;
             if (!is_black(pTree, w)) {
                 w->color = 0;
-                pNode->parent->color = 1;
-                left_rotate(pTree, pNode->parent);
-                w = pNode->parent->right;
+                x->parent->color = 1;
+                left_rotate(pTree, x->parent);
+                w = x->parent->right;
             }
             if (is_black(pTree, w->left) & is_black(pTree, w->right)) {
                 w->color = 1;
-                pNode = pNode->parent;
+                x = x->parent;
             } else {
                 if (is_black(pTree, w->right)) {
                     w->left->color = 0;
                     w->color = 1;
                     right_rotate(pTree, w);
-                    w = pNode->parent->right;
+                    w = x->parent->right;
                 }
-                w->color = pNode->parent->color;
-                pNode->parent->color = 0;
+                w->color = x->parent->color;
+                x->parent->color = 0;
                 w->right->color = 0;
-                left_rotate(pTree, pNode->parent);
-                pNode = pTree->root;
+                left_rotate(pTree, x->parent);
+                x = pTree->root;
             }
         } else {
-            struct RB_node *w = pNode->parent->left;
+            struct RB_node *w = x->parent->left;
             if (!is_black(pTree, w)) {
                 w->color = 0;
-                pNode->parent->color = 1;
-                right_rotate(pTree, pNode->parent);
-                w = pNode->parent->left;
+                x->parent->color = 1;
+                right_rotate(pTree, x->parent);
+                w = x->parent->left;
             }
-            if (is_black(pTree, w->left) & is_black(pTree, w->right)) {
+            if (is_black(pTree, w->right) & is_black(pTree, w->left)) {
                 w->color = 1;
-                pNode = pNode->parent;
+                x = x->parent;
             } else {
                 if (is_black(pTree, w->left)) {
                     w->right->color = 0;
                     w->color = 1;
                     left_rotate(pTree, w);
-                    w = pNode->parent->left;
+                    w = x->parent->left;
                 }
-                w->color = pNode->parent->color;
-                pNode->parent->color = 0;
+                w->color = x->parent->color;
+                x->parent->color = 0;
                 w->left->color = 0;
-                right_rotate(pTree, pNode->parent);
-                pNode = pTree->root;
+                right_rotate(pTree, x->parent);
+                x = pTree->root;
             }
         }
     }
-    pNode->color = 0;
+    x->color = 0;
 }
 
 void transplant(struct RB_tree* tree, struct RB_node* u, struct RB_node* v) {
@@ -254,14 +263,21 @@ void transplant(struct RB_tree* tree, struct RB_node* u, struct RB_node* v) {
     else {
         u->parent->right = v;
     }
-    if (v != &tree->NILL)
-        v->parent = u->parent;
+    v->parent = u->parent;
+}
+
+struct RB_node* min(struct RB_tree* tree, struct RB_node* node) {
+    while (node->left != &tree->NILL) {
+        node = node->left;
+    }
+    return node;
 }
 
 void delete(struct RB_tree* tree, struct RB_node* node) {
     struct RB_node* y = node;
     struct RB_node* x;
     bool y_original_color = y->color;
+    assert(is_black(tree, &tree->NILL));
     if (node->left == &tree->NILL) {
         x = node->right;
         transplant(tree, node, node->right);
@@ -271,6 +287,7 @@ void delete(struct RB_tree* tree, struct RB_node* node) {
         transplant(tree, node, node->left);
     }
     else {
+        y = min(tree, node->right);
         y_original_color = y->color;
         x = y->right;
         if (y != node->right) {
@@ -286,9 +303,10 @@ void delete(struct RB_tree* tree, struct RB_node* node) {
         y->left->parent = y;
         y->color = node->color;
     }
-    if (y_original_color && (x != &tree->NILL)) {
+    if (!y_original_color) {
         delete_fix(tree, x);
     }
+    assert(is_black(tree, tree->root));
 }
 
 struct thread* pop_min(struct RB_tree* tree) {
@@ -298,11 +316,10 @@ struct thread* pop_min(struct RB_tree* tree) {
         node = node->left;
     }
     struct thread* t = node->t;
+    assert(!tree->root->color);
     delete(tree, node);
+    assert(!tree->root->color);
     return t;
-}
-bool tree_empty(struct RB_tree* tree) {
-    return tree->root == &tree->NILL;
 }
 
 struct thread* front(struct RB_tree* tree) {
@@ -312,5 +329,4 @@ struct thread* front(struct RB_tree* tree) {
     }
     return node->t;
 }
-
 #endif //RB_TREE_RB_H
